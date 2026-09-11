@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GestionAgenda.Test/GestionAgenda.Test.csproj" />
+  <Project Path="GestionAgenda/GestionAgenda.csproj" />
+</Solution>
