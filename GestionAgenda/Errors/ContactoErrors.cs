@@ -5,12 +5,12 @@
 /// </summary>
 
 
-public class CodigoErrors
+public class ContactoErrors
 {
     public CodigoResultado Codigo { get; }
     public string Mensaje { get; }
 
-    public CodigoErrors(CodigoResultado codigo, string? mensaje)
+    public ContactoErrors(CodigoResultado codigo, string? mensaje)
     {
         Codigo = codigo;
         Mensaje = mensaje ?? MensajePorDefecto(codigo);

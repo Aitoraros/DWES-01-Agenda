@@ -27,34 +27,34 @@ public class ContactoService : IContactoService
         _repositorio = repositorio;
     }
  
-    public Result<Contacto> ObtenerPorId(int id)
+    public Result<Contacto> GetById(int id)
     {
         if (id <= 0)
             return Result<Contacto>.Fallo(CodigoResultado.PeticionInvalida, "El Id debe ser un numero positivo.");
  
-        return _repositorio.ObtenerPorId(id);
+        return _repositorio.GetById(id);
     }
  
-    public Result<Contacto> ObtenerPorAlias(string alias)
+    public Result<Contacto> GetByAlias(string alias)
     {
         if (string.IsNullOrWhiteSpace(alias))
             return Result<Contacto>.Fallo(CodigoResultado.PeticionInvalida, "El alias no puede estar vacio.");
  
-        return _repositorio.ObtenerPorAlias(alias.Trim());
+        return _repositorio.GetByAlias(alias.Trim());
     }
  
-    public Result<ResultadoPaginado<Contacto>> Buscar(string? texto, int pagina, int tamanoPagina)
+    public Result<Contacto> GetAll(string? texto, int pagina, int tamanoPagina)
     {
         if (pagina <= 0)
-            return Result<ResultadoPaginado<Contacto>>.Fallo(CodigoResultado.PeticionInvalida, "La pagina debe ser >= 1.");
+            return Result<Contacto>.Fallo(CodigoResultado.PeticionInvalida, "La pagina debe ser >= 1.");
  
         if (tamanoPagina <= 0 || tamanoPagina > 100)
-            return Result<ResultadoPaginado<Contacto>>.Fallo(CodigoResultado.PeticionInvalida, "El tamano de pagina debe estar entre 1 y 100.");
+            return Result<Contacto>.Fallo(CodigoResultado.PeticionInvalida, "El tamano de pagina debe estar entre 1 y 100.");
  
-        return _repositorio.Buscar(texto?.Trim(), pagina, tamanoPagina);
+        return _repositorio.GetAll(texto?.Trim(), pagina, tamanoPagina);
     }
  
-    public Result<Contacto> CrearContacto(string nombre, string telefono, string email, string alias)
+    public Result<Contacto> CreateContacto(string nombre, string telefono, string email, string alias)
     {
         var errorValidacion = ValidarCampos(nombre, telefono, email, alias);
         if (errorValidacion is not null)
@@ -68,10 +68,10 @@ public class ContactoService : IContactoService
             Alias = alias.Trim()
         };
  
-        return _repositorio.Crear(contacto);
+        return _repositorio.Create(contacto);
     }
  
-    public Result<Contacto> ActualizarContacto(int id, string nombre, string telefono, string email, string alias)
+    public Result<Contacto> UpdateContacto(int id, string nombre, string telefono, string email, string alias)
     {
         if (id <= 0)
             return Result<Contacto>.Fallo(CodigoResultado.PeticionInvalida, "El Id debe ser un numero positivo.");
@@ -89,15 +89,15 @@ public class ContactoService : IContactoService
             Alias = alias.Trim()
         };
  
-        return _repositorio.Actualizar(contacto);
+        return _repositorio.Update(contacto);
     }
  
-    public Result EliminarContacto(int id)
+    public Result DeleteContacto(int id)
     {
         if (id <= 0)
             return Result.Fallo(CodigoResultado.PeticionInvalida, "El Id debe ser un numero positivo.");
  
-        return _repositorio.Eliminar(id);
+        return _repositorio.Delete(id);
     }
  
     /// <summary>

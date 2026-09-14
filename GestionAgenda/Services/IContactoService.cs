@@ -9,10 +9,10 @@ namespace GestionAgenda.Services;
 /// </summary>
 public interface IContactoService
 {
-    Result<Contacto> ObtenerPorId(int id);
-    Result<Contacto> ObtenerPorAlias(string alias);
-    Result<Contacto> Buscar(string? texto, int pagina, int tamanoPagina);
-    Result<Contacto> CrearContacto(string nombre, string telefono, string email, string alias);
-    Result<Contacto> ActualizarContacto(int id, string nombre, string telefono, string email, string alias);
-    Result EliminarContacto(int id);
+    Result<Contacto> GetById(int id);
+    Result<Contacto> GetByAlias(string alias);
+    Result<Contacto> GetAll(string? texto, int pagina, int tamanoPagina);
+    Result<Contacto> CreateContacto(string nombre, string telefono, string email, string alias);
+    Result<Contacto> UpdateContacto(int id, string nombre, string telefono, string email, string alias);
+    Result DeleteContacto(int id);
 }
