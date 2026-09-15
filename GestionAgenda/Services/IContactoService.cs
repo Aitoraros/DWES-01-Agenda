@@ -4,8 +4,7 @@ using GestionAgenda.Models;
 namespace GestionAgenda.Services;
 
 /// <summary>
-/// Casos de uso de negocio de la agenda de contactos. Esta es la interfaz
-/// que consume Program.cs; nunca habla directamente con el repositorio.
+/// Contrato para las reglas de negocio del servicio.
 /// </summary>
 public interface IContactoService
 {

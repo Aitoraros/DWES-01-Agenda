@@ -30,27 +30,36 @@ public class ContactoRepositoryEfCore : IContactoRepository
 
     public IEnumerable<Contacto> GetAll(string? texto, int pagina, int tamanoPagina)
     {
-        _logger.Debug("Buscando contactos. Texto={Texto}, Pagina={Pagina}, TamanoPagina={TamanoPagina}",
-            texto, pagina, tamanoPagina);
-
-        var query = _context.Contactos.Where(c => !c.IsDeleted);
-
-        if (!string.IsNullOrWhiteSpace(texto))
+        try
         {
-            var textoBusqueda = texto.ToLower();
-            query = query.Where(c =>
-                c.Nombre.ToLower().Contains(textoBusqueda) ||
-                c.Alias.ToLower().Contains(textoBusqueda) ||
-                c.Email.ToLower().Contains(textoBusqueda) ||
-                c.Telefono.Contains(textoBusqueda));
-        }
+            _logger.Debug("Buscando contactos. Texto={Texto}, Pagina={Pagina}, TamanoPagina={TamanoPagina}",
+                texto, pagina, tamanoPagina);
 
-        return query
-            .OrderBy(c => c.Nombre)
-            .Skip((pagina - 1) * tamanoPagina)
-            .Take(tamanoPagina)
-            .ToList()
-            .Select(e => e.ToModel());
+            var query = _context.Contactos.Where(c => !c.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                var textoBusqueda = texto.ToLower();
+                query = query.Where(c =>
+                    c.Nombre.ToLower().Contains(textoBusqueda) ||
+                    c.Alias.ToLower().Contains(textoBusqueda) ||
+                    c.Email.ToLower().Contains(textoBusqueda) ||
+                    c.Telefono.Contains(textoBusqueda));
+            }
+
+            return query
+                .OrderBy(c => c.Nombre)
+                .Skip((pagina - 1) * tamanoPagina)
+                .Take(tamanoPagina)
+                .ToList()
+                .Select(e => e.ToModel());
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error inesperado buscando contactos. Texto={Texto}, Pagina={Pagina}, TamanoPagina={TamanoPagina}",
+                texto, pagina, tamanoPagina);
+            return Enumerable.Empty<Contacto>();
+        }
     }
 
     public Result<Contacto> GetById(int id)
@@ -113,7 +122,7 @@ public class ContactoRepositoryEfCore : IContactoRepository
 
             var entity = contacto.ToEntity();
             _context.Contactos.Add(entity);
-            _context.SaveChanges(); // aqui EF Core rellena entity.Id (autoincremental)
+            _context.SaveChanges();
 
             _logger.Information("Contacto creado. Id={Id}, Alias={Alias}", entity.Id, entity.Alias);
             return Result.Success(entity.ToModel());
@@ -147,11 +156,7 @@ public class ContactoRepositoryEfCore : IContactoRepository
                 return Result.Failure<Contacto>(error.ToString());
             }
 
-            // Se actualiza "existente" (la entidad que EF ya rastrea) campo a
-            // campo, en vez de crear una entidad nueva con ToEntity() y
-            // llamar a Update(nuevaEntidad): si hicieramos eso, EF Core
-            // lanzaria una excepcion porque ya hay una entidad con ese mismo
-            // Id bajo seguimiento.
+            
             existente.Nombre = contacto.Nombre;
             existente.Telefono = contacto.Telefono;
             existente.Email = contacto.Email;
@@ -183,9 +188,7 @@ public class ContactoRepositoryEfCore : IContactoRepository
                 return Result.Failure(error.ToString());
             }
 
-            // Borrado logico: se marca IsDeleted=true en vez de Remove(), para
-            // conservar el historico. Por eso el resto de metodos filtran
-            // "!IsDeleted".
+           
             existente.IsDeleted = true;
             existente.UpdatedAt = DateTime.UtcNow;
             _context.SaveChanges();

@@ -3,9 +3,7 @@
 namespace GestionAgenda.Entity;
 
 /// <summary>
-/// Unico punto de contacto con EF Core / SQLite. Ninguna otra clase del
-/// proyecto (aparte de EfContactoRepository, que la recibe inyectada)
-/// conoce esta clase directamente.
+///     Contexto de Entity Framework Core para la base de datos de contactos.
 /// </summary>
 public class AgendaDbContext : DbContext
 {

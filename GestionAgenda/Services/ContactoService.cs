@@ -9,13 +9,8 @@ using GestionAgenda.Validators;
 namespace GestionAgenda.Services;
 
 /// <summary>
-/// Orquesta las reglas de negocio (validaciones) y delega la persistencia
-/// en IContactoRepository. Esta clase SOLO conoce la abstraccion
-/// IContactoRepository, nunca EF Core ni SQLite directamente (DIP).
-///
-/// Responsabilidad unica (SRP): esta clase se encarga solo de validar y
-/// orquestar; no sabe nada de como se guardan ni de como se cachean los
-/// contactos, de eso se encargan otras clases (carpetas Repositories y Cache).
+/// Proporciona la lógica de negocio para la gestión integral de contactos, 
+/// coordinando la validación de entidades, el acceso al repositorio y la gestión de caché.
 /// </summary>
 
 public class ContactoService(
@@ -32,11 +27,25 @@ public class ContactoService(
         if (id <= 0)
         {
             _logger.Warning("GetById rechazado: Id invalido ({Id})", id);
-            var error = new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.");
-            return Result.Failure<Contacto>(error.ToString());
+            return Result.Failure<Contacto>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.").ToString()
+            );
         }
 
-        return repository.GetById(id);
+        var enCache = cache.Get(id);
+        if (enCache is not null)
+        {
+            Console.WriteLine($"Id={id} servido desde memoria.");
+            return Result.Success(enCache);
+        }
+
+        Console.WriteLine($"Id={id} no estaba en cache, se consulta SQLite.");
+        var resultado = repository.GetById(id);
+
+        if (resultado.IsSuccess)
+            cache.Add(id, resultado.Value);
+
+        return resultado;
     }
 
     public Result<Contacto> GetByAlias(string alias)
@@ -46,8 +55,9 @@ public class ContactoService(
         if (string.IsNullOrWhiteSpace(alias))
         {
             _logger.Warning("GetByAlias rechazado: alias vacio");
-            var error = new ContactoErrors(CodigoResultado.PeticionInvalida, "El alias no puede estar vacio.");
-            return Result.Failure<Contacto>(error.ToString());
+            return Result.Failure<Contacto>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, "El alias no puede estar vacio.").ToString()
+            );
         }
 
         return repository.GetByAlias(alias);
@@ -62,8 +72,9 @@ public class ContactoService(
         {
             _logger.Warning("GetAll rechazado: paginacion invalida (Pagina={Pagina}, TamanoPagina={TamanoPagina})",
                 pagina, tamanoPagina);
-            var error = new ContactoErrors(CodigoResultado.PeticionInvalida, "Pagina y tamanoPagina deben ser mayores que 0.");
-            return Result.Failure<IEnumerable<Contacto>>(error.ToString());
+            return Result.Failure<IEnumerable<Contacto>>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, "Pagina y tamanoPagina deben ser mayores que 0.").ToString()
+            );
         }
 
         var contactos = repository.GetAll(texto, pagina, tamanoPagina).ToList();
@@ -72,13 +83,6 @@ public class ContactoService(
 
     public Result<Contacto> CreateContacto(string nombre, string telefono, string email, string alias)
     {
-        var validacion = ValidarDatos(nombre, telefono, email, alias);
-        if (validacion.IsFailure)
-        {
-            _logger.Warning("CreateContacto rechazado por validacion: {Error}", validacion.Error);
-            return Result.Failure<Contacto>(validacion.Error);
-        }
-
         var contacto = new Contacto
         {
             Nombre = nombre.Trim(),
@@ -86,6 +90,18 @@ public class ContactoService(
             Email = email.Trim(),
             Alias = alias.Trim()
         };
+
+        var errores = validador.Validar(contacto).ToList();
+        if (errores.Count > 0)
+        {
+            var mensaje = string.Join(" ", errores);
+            _logger.Warning("CreateContacto rechazado por validacion: {Error}", mensaje);
+            
+            // Envolvemos los errores de validación en ContactoErrors con PeticionInvalida
+            return Result.Failure<Contacto>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, mensaje).ToString()
+            );
+        }
 
         var resultado = repository.Create(contacto);
 
@@ -100,15 +116,9 @@ public class ContactoService(
         if (id <= 0)
         {
             _logger.Warning("UpdateContacto rechazado: Id invalido ({Id})", id);
-            var error = new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.");
-            return Result.Failure<Contacto>(error.ToString());
-        }
-
-        var validacion = ValidarDatos(nombre, telefono, email, alias);
-        if (validacion.IsFailure)
-        {
-            _logger.Warning("UpdateContacto rechazado por validacion. Id={Id}, Error={Error}", id, validacion.Error);
-            return Result.Failure<Contacto>(validacion.Error);
+            return Result.Failure<Contacto>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.").ToString()
+            );
         }
 
         var contacto = new Contacto
@@ -120,10 +130,25 @@ public class ContactoService(
             Alias = alias.Trim()
         };
 
+        var errores = validador.Validar(contacto).ToList();
+        if (errores.Count > 0)
+        {
+            var mensaje = string.Join(" ", errores);
+            _logger.Warning("UpdateContacto rechazado por validacion. Id={Id}, Error={Error}", id, mensaje);
+            
+            // Envolvemos los errores de validación en ContactoErrors con PeticionInvalida
+            return Result.Failure<Contacto>(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, mensaje).ToString()
+            );
+        }
+
         var resultado = repository.Update(contacto);
 
         if (resultado.IsSuccess)
+        {
+            cache.Remove(id);
             _logger.Information("Contacto actualizado desde el servicio. Id={Id}", id);
+        }
 
         return resultado;
     }
@@ -133,32 +158,19 @@ public class ContactoService(
         if (id <= 0)
         {
             _logger.Warning("DeleteContacto rechazado: Id invalido ({Id})", id);
-            var error = new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.");
-            return Result.Failure(error.ToString());
+            return Result.Failure(
+                new ContactoErrors(CodigoResultado.PeticionInvalida, "El Id debe ser mayor que 0.").ToString()
+            );
         }
 
         var resultado = repository.Delete(id);
 
         if (resultado.IsSuccess)
+        {
+            cache.Remove(id);
             _logger.Information("Contacto eliminado desde el servicio. Id={Id}", id);
+        }
 
         return resultado;
-    }
-
-    private Result ValidarDatos(string nombre, string telefono, string email, string alias)
-    {
-        if (string.IsNullOrWhiteSpace(nombre))
-            return Result.Failure(new ContactoErrors(CodigoResultado.PeticionInvalida, "El nombre no puede estar vacio.").ToString());
-
-        if (string.IsNullOrWhiteSpace(telefono))
-            return Result.Failure(new ContactoErrors(CodigoResultado.PeticionInvalida, "El telefono no puede estar vacio.").ToString());
-
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-            return Result.Failure(new ContactoErrors(CodigoResultado.PeticionInvalida, "El email no es valido.").ToString());
-
-        if (string.IsNullOrWhiteSpace(alias))
-            return Result.Failure(new ContactoErrors(CodigoResultado.PeticionInvalida, "El alias no puede estar vacio.").ToString());
-
-        return Result.Success();
     }
 }

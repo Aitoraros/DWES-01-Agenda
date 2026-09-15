@@ -16,6 +16,8 @@ public class ContactoErrors
         Mensaje = mensaje ?? MensajePorDefecto(codigo);
     }
     
+    public override string ToString() => $"[{(int)Codigo}] {Mensaje}";
+    
     private static string MensajePorDefecto(CodigoResultado codigo) => codigo switch
     {
         CodigoResultado.Ok => "La operación se ha completado correctamente.",

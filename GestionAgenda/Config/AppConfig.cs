@@ -15,8 +15,7 @@ public class AppConfig
     public static IConfiguration Config { get; }
     public static CultureInfo Locale = CultureInfo.GetCultureInfo("es-ES");
     
-    public static string ConnectionString => 
-        Config.GetValue<string>("Repository:ConnectionString") ?? "Data Source=data/agenda.db";
+    public static string ConnectionString => "Data Source=agenda.db";
 
     public static int CacheSize => Config.GetValue("Cache:Size", 5);
 

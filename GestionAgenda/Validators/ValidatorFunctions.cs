@@ -14,9 +14,9 @@ public class ValidatorFunctions
         !string.IsNullOrEmpty(alias) && alias.Trim().Length < 15 && alias.Trim().Length > 1;
 
     public bool EmailValido(string email) =>
-        Regex.IsMatch(email.Trim(), EmailRegex);
+        !string.IsNullOrEmpty(email) && Regex.IsMatch(email.Trim(), EmailRegex);
 
     public bool TelefonoValido(string telefono) =>
-        Regex.IsMatch(telefono.Trim(), TelefonoRegex);
+        !string.IsNullOrEmpty(telefono) && Regex.IsMatch(telefono.Trim(), TelefonoRegex);
 }
 

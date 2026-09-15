@@ -13,6 +13,7 @@ namespace GestionAgenda.Validators;
             if (contacto is null)
             {
                 errores.Add("El contacto no puede ser nulo");
+                return errores;
             }
 
             if (!_validatorFunctions.NombreValido(contacto.Nombre))
