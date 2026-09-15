@@ -13,7 +13,6 @@ public class ValidatorFunctions
     public bool AliasValido(string alias) =>
         !string.IsNullOrEmpty(alias) && alias.Trim().Length < 15 && alias.Trim().Length > 1;
 
-
     public bool EmailValido(string email) =>
         Regex.IsMatch(email.Trim(), EmailRegex);
 

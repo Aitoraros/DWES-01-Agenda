@@ -11,7 +11,7 @@ public interface IContactoService
 {
     Result<Contacto> GetById(int id);
     Result<Contacto> GetByAlias(string alias);
-    Result<Contacto> GetAll(string? texto, int pagina, int tamanoPagina);
+    Result<IEnumerable<Contacto>> GetAll(string? texto, int pagina, int tamanoPagina);
     Result<Contacto> CreateContacto(string nombre, string telefono, string email, string alias);
     Result<Contacto> UpdateContacto(int id, string nombre, string telefono, string email, string alias);
     Result DeleteContacto(int id);

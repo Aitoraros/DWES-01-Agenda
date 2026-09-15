@@ -4,7 +4,6 @@ using GestionAgenda.Errors;
 using GestionAgenda.Factory;
 using GestionAgenda.Mapper;
 using GestionAgenda.Models;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace GestionAgenda.Repositories;
@@ -17,11 +16,12 @@ public class ContactoRepositoryEfCore : IContactoRepository
     public ContactoRepositoryEfCore(AgendaDbContext context, bool dropData = false, bool seedData = false)
     {
         _context = context;
-        
+
         if (dropData) _context.Database.EnsureDeleted();
         _context.Database.EnsureCreated();
-        
-        if (seedData && !_context.Contactos.Any()) {
+
+        if (seedData && !_context.Contactos.Any())
+        {
             _logger.Information("Sembrando datos de contactos...");
             foreach (var c in ContactosFactory.Seed())
                 Create(c);
@@ -45,10 +45,6 @@ public class ContactoRepositoryEfCore : IContactoRepository
                 c.Telefono.Contains(textoBusqueda));
         }
 
-        // Primero ToList() (ejecuta el SQL) y LUEGO .Select(ToModel()): si el
-        // Select fuera antes del ToList(), EF Core intentaria traducir
-        // ToModel() a SQL y fallaria, porque no sabe convertir ese metodo
-        // C# a una consulta de base de datos.
         return query
             .OrderBy(c => c.Nombre)
             .Skip((pagina - 1) * tamanoPagina)
@@ -66,15 +62,17 @@ public class ContactoRepositoryEfCore : IContactoRepository
             if (entity is null)
             {
                 _logger.Warning("No se encontro el contacto Id={Id}", id);
-                return new Result<Contacto>(false, null, CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={id}.");
+                var error = new ContactoErrors(CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={id}.");
+                return Result.Failure<Contacto>(error.ToString());
             }
 
-            return new Result<Contacto>(true, entity.ToModel(), CodigoResultado.Ok, "Contacto encontrado.");
+            return Result.Success(entity.ToModel());
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error inesperado obteniendo el contacto Id={Id}", id);
-            return new Result<Contacto>(false, null, CodigoResultado.ErrorInterno, $"Error inesperado accediendo a la base de datos: {ex.Message}");
+            var error = new ContactoErrors(CodigoResultado.ErrorInterno, $"Error inesperado accediendo a la base de datos: {ex.Message}");
+            return Result.Failure<Contacto>(error.ToString());
         }
     }
 
@@ -86,16 +84,18 @@ public class ContactoRepositoryEfCore : IContactoRepository
 
             if (entity is null)
             {
-                _logger.Warning("No se encontro el contacto alias={Alias}", alias);
-                return new Result<Contacto>(false, null, CodigoResultado.NoEncontrado, $"No existe ningun contacto con alias '{alias}'.");
+                _logger.Warning("No se encontro el contacto con alias={Alias}", alias);
+                var error = new ContactoErrors(CodigoResultado.NoEncontrado, $"No existe ningun contacto con alias '{alias}'.");
+                return Result.Failure<Contacto>(error.ToString());
             }
 
-            return new Result<Contacto>(true, entity.ToModel(), CodigoResultado.Ok, "Contacto encontrado.");
+            return Result.Success(entity.ToModel());
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error inesperado obteniendo el contacto alias={Alias}", alias);
-            return new Result<Contacto>(false, null, CodigoResultado.ErrorInterno, $"Error inesperado accediendo a la base de datos: {ex.Message}");
+            var error = new ContactoErrors(CodigoResultado.ErrorInterno, $"Error inesperado accediendo a la base de datos: {ex.Message}");
+            return Result.Failure<Contacto>(error.ToString());
         }
     }
 
@@ -107,7 +107,8 @@ public class ContactoRepositoryEfCore : IContactoRepository
             if (aliasEnUso)
             {
                 _logger.Warning("Alias duplicado al crear contacto: {Alias}", contacto.Alias);
-                return new Result<Contacto>(false, null, CodigoResultado.Conflicto, $"Ya existe un contacto con el alias '{contacto.Alias}'.");
+                var error = new ContactoErrors(CodigoResultado.Conflicto, $"Ya existe un contacto con el alias '{contacto.Alias}'.");
+                return Result.Failure<Contacto>(error.ToString());
             }
 
             var entity = contacto.ToEntity();
@@ -115,12 +116,13 @@ public class ContactoRepositoryEfCore : IContactoRepository
             _context.SaveChanges(); // aqui EF Core rellena entity.Id (autoincremental)
 
             _logger.Information("Contacto creado. Id={Id}, Alias={Alias}", entity.Id, entity.Alias);
-            return new Result<Contacto>(true, entity.ToModel(), CodigoResultado.Creado, "Contacto creado correctamente.");
+            return Result.Success(entity.ToModel());
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error inesperado creando el contacto alias={Alias}", contacto.Alias);
-            return new Result<Contacto>(false, null, CodigoResultado.ErrorInterno, $"Error inesperado guardando el contacto: {ex.Message}");
+            var error = new ContactoErrors(CodigoResultado.ErrorInterno, $"Error inesperado guardando el contacto: {ex.Message}");
+            return Result.Failure<Contacto>(error.ToString());
         }
     }
 
@@ -132,7 +134,8 @@ public class ContactoRepositoryEfCore : IContactoRepository
             if (existente is null)
             {
                 _logger.Warning("Intento de actualizar un contacto inexistente. Id={Id}", contacto.Id);
-                return new Result<Contacto>(false, null, CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={contacto.Id}.");
+                var error = new ContactoErrors(CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={contacto.Id}.");
+                return Result.Failure<Contacto>(error.ToString());
             }
 
             var aliasEnUso = _context.Contactos.Any(c =>
@@ -140,7 +143,8 @@ public class ContactoRepositoryEfCore : IContactoRepository
             if (aliasEnUso)
             {
                 _logger.Warning("Alias duplicado al actualizar contacto Id={Id}: {Alias}", contacto.Id, contacto.Alias);
-                return new Result<Contacto>(false, null, CodigoResultado.Conflicto, $"Ya existe otro contacto con el alias '{contacto.Alias}'.");
+                var error = new ContactoErrors(CodigoResultado.Conflicto, $"Ya existe otro contacto con el alias '{contacto.Alias}'.");
+                return Result.Failure<Contacto>(error.ToString());
             }
 
             // Se actualiza "existente" (la entidad que EF ya rastrea) campo a
@@ -157,12 +161,13 @@ public class ContactoRepositoryEfCore : IContactoRepository
             _context.SaveChanges();
 
             _logger.Information("Contacto actualizado. Id={Id}", existente.Id);
-            return new Result<Contacto>(true, existente.ToModel(), CodigoResultado.Ok, "Contacto actualizado correctamente.");
+            return Result.Success(existente.ToModel());
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error inesperado actualizando el contacto Id={Id}", contacto.Id);
-            return new Result<Contacto>(false, null, CodigoResultado.ErrorInterno, $"Error inesperado actualizando el contacto: {ex.Message}");
+            var error = new ContactoErrors(CodigoResultado.ErrorInterno, $"Error inesperado actualizando el contacto: {ex.Message}");
+            return Result.Failure<Contacto>(error.ToString());
         }
     }
 
@@ -174,7 +179,8 @@ public class ContactoRepositoryEfCore : IContactoRepository
             if (existente is null)
             {
                 _logger.Warning("Intento de eliminar un contacto inexistente (o ya eliminado). Id={Id}", id);
-                return new Result(false, CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={id}.");
+                var error = new ContactoErrors(CodigoResultado.NoEncontrado, $"No existe ningun contacto con Id={id}.");
+                return Result.Failure(error.ToString());
             }
 
             // Borrado logico: se marca IsDeleted=true en vez de Remove(), para
@@ -185,12 +191,13 @@ public class ContactoRepositoryEfCore : IContactoRepository
             _context.SaveChanges();
 
             _logger.Information("Contacto eliminado (soft delete). Id={Id}", id);
-            return new Result(true, CodigoResultado.Ok, "Contacto eliminado correctamente.");
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Error inesperado eliminando el contacto Id={Id}", id);
-            return new Result(false, CodigoResultado.ErrorInterno, $"Error inesperado eliminando el contacto: {ex.Message}");
+            var error = new ContactoErrors(CodigoResultado.ErrorInterno, $"Error inesperado eliminando el contacto: {ex.Message}");
+            return Result.Failure(error.ToString());
         }
     }
 }
